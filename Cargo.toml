@@ -1,6 +1,6 @@
 [workspace]
-members = [] 
-default-members = []
+members = [ "slave_bin","slave_lib"] 
+default-members = ["slave_bin"]
 resolver = "2"
 [workspace.package]
 version = "0.0.0"
