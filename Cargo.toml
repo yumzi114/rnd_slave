@@ -1,5 +1,5 @@
 [workspace]
-members = [ "slave_bin","slave_lib"] 
+members = [ "slave_bin", "slaveapi"] 
 default-members = ["slave_bin"]
 resolver = "2"
 [workspace.package]
