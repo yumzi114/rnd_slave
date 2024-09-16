@@ -7,6 +7,7 @@ use serde_hex::{SerHex,StrictPfx};
 use tokio::{self};
 use mini_redis::{client, Result};
 use core::result::Result as ResultC;
+use std::{thread, time::Duration};
 use futures::{stream::StreamExt, SinkExt};
 use futures_channel::mpsc;
 use tokio_serial::{SerialPort, SerialPortBuilderExt, StopBits};
@@ -15,7 +16,7 @@ use tokio_util::codec::{Decoder, Encoder};
 use slaveapi::{self, LineCodec};
 #[cfg(unix)]
 // const SERIAL_DEVICE: &'static str = env!("SERIAL_DEVICE");
-const SERIAL_DEVICE: &'static str = "/dev/ttyAMA1";
+const SERIAL_DEVICE: &'static str = "/dev/ttyAMA2";
 // const SERIAL_DEVICE : "/dev/ttyACM1";
 
 #[derive(Debug,PartialEq,Eq,Serialize,Deserialize,Defaults,Clone,Copy)]
@@ -84,6 +85,16 @@ impl Responese {
             return Ok(());
         }
     }
+    fn to_vec(&self)->ResultC<Vec<u8>,String>{
+        let mut list = vec![];
+        list.push(self.start);
+        list.push(self.length);
+        list.push(self.command);
+        list.push(self.data);
+        list.push(self.checksum);
+        list.push(self.end);
+        Ok(list)
+    }
 }
 
 #[tokio::main]
@@ -91,7 +102,7 @@ async fn main() -> Result<()> {
     let mut port = tokio_serial::new(SERIAL_DEVICE, 115200).open_native_async().unwrap();
     #[cfg(unix)]
     port.set_stop_bits(StopBits::One).unwrap();
-    let (writer, mut reader) = LineCodec.framed(port).split();
+    let (mut writer, mut reader) = LineCodec.framed(port).split();
     let serial_handle = tokio::task::Builder::new()
         .name("Serial Reciver")
         .spawn(async move{
@@ -114,10 +125,14 @@ async fn main() -> Result<()> {
         });
 
     loop{
-        println!("Loop");
-        let mut led = LED::new(17);
-        led.blink(2.0,3.0);
-        led.wait();
+        println!("Main Loop");
+        thread::sleep(Duration::from_millis(1000));
+        let test = Responese::default();
+        if let Ok(list) = test.to_vec(){
+            if let Ok(send_data)=writer.send(list).await{
+                println!("SEND : {:?}",test);
+            }
+        }
     }
 
     // let mut port = tokio_serial::new(SERIAL_DEVICE, 115200).open_native_async().unwrap();

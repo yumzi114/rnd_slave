@@ -3,13 +3,13 @@
 use core::str;
 use std::io::{self, Error, ErrorKind};
 
-use bytes::BytesMut;
+use bytes::{BufMut, BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
 
 
 #[cfg(unix)]
 // const SERIAL_DEVICE: &'static str = env!("SERIAL_DEVICE");
-const SERIAL_DEVICE: &'static str = "/dev/ttyAMA1";
+const SERIAL_DEVICE: &'static str = "/dev/ttyAMA2";
 #[cfg(windows)]
 const DEFAULT_TTY: &str = "COM1";
 
@@ -49,10 +49,15 @@ impl Decoder for LineCodec {
     }
 }
 
-impl Encoder<String> for LineCodec {
+impl Encoder<Vec<u8>> for LineCodec {
     type Error = io::Error;
 
-    fn encode(&mut self, _item: String, _dst: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, item: Vec<u8>, buf: &mut BytesMut) -> Result<(), Self::Error> {
+        
+        for i in item{
+            buf.put_u8(i);
+        }
+        
         Ok(())
     }
 }
