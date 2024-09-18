@@ -10,8 +10,8 @@ use core::result::Result as ResultC;
 use std::{thread, time::Duration};
 use futures::{stream::StreamExt, SinkExt};
 use futures_channel::mpsc;
+use tracing::{info, trace, warn, error};
 use tokio_serial::{SerialPort, SerialPortBuilderExt, StopBits};
-use rust_gpiozero::*;
 use tokio_util::codec::{Decoder, Encoder};
 use slaveapi::{self, LineCodec};
 #[cfg(unix)]
@@ -99,6 +99,9 @@ impl Responese {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tracing::subscriber::set_global_default(
+        tracing_subscriber::FmtSubscriber::new()
+    ).expect("setting default subscriber failed");
     let mut port = tokio_serial::new(SERIAL_DEVICE, 115200).open_native_async().unwrap();
     #[cfg(unix)]
     port.set_stop_bits(StopBits::One).unwrap();
@@ -111,28 +114,37 @@ async fn main() -> Result<()> {
             // port.set_stop_bits(StopBits::One).unwrap();
             // let mut reader =LineCodec.framed(port);
             while let Some(line_result) = reader.next().await {
-                let mut respon = Responese::default();
-                if let Ok(line)=line_result{
-                    if let Ok(_)=respon.parser(&line){
-                        match respon.is_checksum() {
-                            Ok(_)=>println!("{:?}", respon),
-                            Err(_)=>println!("CheckSum Error"),
-                        }
-                        // println!("{:?}", respon);    
+                if let Ok(packet)=line_result{
+                    match packet.command{
+                        0x01=>info!("READ [Request]: {:?}",packet),
+                        0x02=>info!("READ [RESPONSE]: {:?}",packet),
+                        0x03=>info!("READ [REPORT]: {:?}",packet),
+                        _=>{}
                     }
+                    
                 }
+                // let mut respon = Responese::default();
+                // if let Ok(line)=line_result{
+                //     if let Ok(_)=respon.parser(&line){
+                //         match respon.is_checksum() {
+                //             Ok(_)=>println!("{:?}", respon),
+                //             Err(_)=>println!("CheckSum Error"),
+                //         }
+                //         // println!("{:?}", respon);    
+                //     }
+                // }
             }
         });
 
     loop{
-        println!("Main Loop");
+        // println!("Main Loop");
         thread::sleep(Duration::from_millis(1000));
-        let test = Responese::default();
-        if let Ok(list) = test.to_vec(){
-            if let Ok(send_data)=writer.send(list).await{
-                println!("SEND : {:?}",test);
-            }
-        }
+        // let test = Responese::default();
+        // if let Ok(list) = test.to_vec(){
+        //     if let Ok(send_data)=writer.send(list).await{
+        //         println!("SEND : {:?}",test);
+        //     }
+        // }
     }
 
     // let mut port = tokio_serial::new(SERIAL_DEVICE, 115200).open_native_async().unwrap();
