@@ -30,6 +30,7 @@ async fn main() -> Result<()> {
     tracing::subscriber::set_global_default(
         tracing_subscriber::FmtSubscriber::new()
     ).expect("setting default subscriber failed");
+    
     let up_pin = Arc::new(Mutex::new(Gpio::new().unwrap().get(UP_BT).unwrap().into_input_pullup()));
     let down_pin = Arc::new(Mutex::new(Gpio::new().unwrap().get(DOWN_BT).unwrap().into_input_pullup()));
     // let mut pin = Gpio::new().unwrap().get(DOWN_BT)?.into_output();
@@ -63,30 +64,43 @@ async fn main() -> Result<()> {
     thread::spawn(move||{
         let rt  = Runtime::new().unwrap();
         rt.block_on(async {
+            let mut flag1 = 0;
+            let mut flag2 = 0;
             loop{
                 if up_pin.lock().unwrap().is_low(){
-                    let mut req = Packet::default();
-                    req.command = 0x01;
-                    req.remote=0b0000_0001;
-                    if let Ok(_)=req.add_checksum(){
-                        if let Ok(_)=req.is_checksum(){
-                            if let Ok(_)=writer.send(req).await{
-                                info!("SEND [REQUEST]: {:?}",req);
+                    if flag1 ==0{
+                        flag1=1;
+                        let mut req = Packet::default();
+                        req.command = 0x01;
+                        req.remote=0b0000_0001;
+                        if let Ok(_)=req.add_checksum(){
+                            if let Ok(_)=req.is_checksum(){
+                                if let Ok(_)=writer.send(req).await{
+                                    info!("SEND [REQUEST]: {:?}",req);
+                                }
                             }
                         }
                     }
+                }else {
+                    flag1 =0;
                 }
                 if down_pin.lock().unwrap().is_low(){
-                    let mut req = Packet::default();
-                    req.command = 0x01;
-                    req.remote=0b0000_0010;
-                    if let Ok(_)=req.add_checksum(){
-                        if let Ok(_)=req.is_checksum(){
-                            if let Ok(_)=writer.send(req).await{
-                                info!("SEND [REQUEST]: {:?}",req);
+                    if flag2==0{
+                        flag2=1;
+                        let mut req = Packet::default();
+                        req.command = 0x01;
+                        req.remote=0b0000_0010;
+                        if let Ok(_)=req.add_checksum(){
+                            if let Ok(_)=req.is_checksum(){
+                                if let Ok(_)=writer.send(req).await{
+                                    
+                                    info!("SEND [REQUEST]: {:?}",req);
+                                }
                             }
                         }
                     }
+                }else{
+                    flag2=0;
                 }
                 thread::sleep(Duration::from_millis(1));
             }
